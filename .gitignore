@@ -97,3 +97,5 @@ ENV/
 
 # mypy
 .mypy_cache/
+.credentials/google-drive-credentials.json
+client_secret/client_secret.json
