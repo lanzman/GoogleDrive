@@ -36,23 +36,29 @@ class auth:
         #creates a store for accessing creditials
         store = file.Storage(credential_path)
         credentials = store.get()
+        
+        #sets the client_secret folder
+        client_secret_dir = os.path.join(cwd_dir, 'client_secret')
+        #checks if directory exists and if not creates it
+        if not os.path.exists(client_secret_dir):
+            os.makedirs(client_secret_dir)
+        #creates the filepath for the client_secret
+        client_secret_path = os.path.join(client_secret_dir,self.CLIENT_SECRET_FILE)
+        
+        #checks if file exists otherwise exits script
+        if not os.path.exists(client_secret_path):
+            input('The client_secret.json file is missing from \\client_secret directory. Visit https:/developers.google.com/drive/v2/web/quickstart/python \
+for instructions to generate this file and store in the clients_secret directory. \nPress enter to exit')
+            sys.exit() 
                 
         #if the credentials are non-existant, a flow is created to generate the credentials
         if not credentials or credentials.invalid:
             
             #attempts to grab the client_secrets.json file but if it's not found, instructs user to place it in correct location
-            try:
-                flow = client.flow_from_clientsecrets(self.CLIENT_SECRET_FILE, self.SCOPES)
-                credentials = tools.run_flow(flow, store)
-                print('Storing credentials to ' + credential_path)
-                
-            except:
-                client_secretdir = os.path.join(cwd_dir, 'client_secret')
-                if not os.path.exists(client_secretdir):
-                    os.makedirs(client_secretdir)
-                input('The client_secret.json file is missing from \\client_secret directory. Visit https:/developers.google.com/drive/v2/web/quickstart/python \
-for instructions to generate this file and store in the clients_secret directory. \nPress enter to exit')
-                sys.exit()            
+            flow = client.flow_from_clientsecrets(client_secret_path, self.SCOPES)
+            credentials = tools.run_flow(flow, store)
+            print('Storing credentials to ' + credential_path)
+        
         #results in the credentials
         return credentials
 
@@ -62,12 +68,11 @@ from apiclient.discovery import build
 from apiclient import errors
 from apiclient.http import MediaFileUpload, MediaIoBaseDownload
 
-
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/drive-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/drive'
 #CLIENT_SECRET_FILE = 'client_secret.json'
-CLIENT_SECRET_FILE = 'client_secret\\client_secret.json'
+CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Drive API Python Quickstart'
 
 #performs authorization
