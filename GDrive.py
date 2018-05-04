@@ -125,7 +125,7 @@ def DataFrameDownload(file_id):
         print("Download %d%%." % int(status.progress() * 100))
 
     fh.seek(0)
-    return pd.read_csv(fh)
+    return pd.read_csv(fh, index_col=0, encoding= 'ISO-8859-1')
 
 #upload file function
 def uploadFile(filename,filepath,mimetype):
