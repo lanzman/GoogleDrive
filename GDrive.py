@@ -66,12 +66,11 @@ from httplib2 import Http
 import io
 from apiclient.discovery import build
 from apiclient import errors
-from apiclient.http import MediaFileUpload, MediaIoBaseDownload
+from apiclient.http import MediaFileUpload, MediaIoBaseDownload, MediaIoBaseUpload
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/drive-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/drive'
-#CLIENT_SECRET_FILE = 'client_secret.json'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Drive API Python Quickstart'
 
@@ -84,6 +83,9 @@ credentials = authInst.getCredentials()
 #sets up the drive service from which functions can be created
 drive_service = build('drive', 'v3', http=credentials.authorize(Http()))
 
+#import pandas to use DataFrames
+import pandas as pd
+
 #download file function
 def downloadFile(file_id,filepath,mimeType):
     
@@ -91,7 +93,7 @@ def downloadFile(file_id,filepath,mimeType):
     
     #creates the request to download a file using google API
     request= drive_service.files().export_media(fileId=file_id, mimeType = mimeType)
-    #sets filehandler?
+    #sets filehandler
     fh = io.BytesIO()
     #initiates the downloader utilizing the request above
     downloader = MediaIoBaseDownload(fh, request)
@@ -106,10 +108,7 @@ def downloadFile(file_id,filepath,mimeType):
 
 #download file function
 def DataFrameDownload(file_id):
-    
-    #import pandas to use DataFrames
-    import pandas as pd
-    
+
     #for using read_csv() to save DataFrame
     mimeType = 'text/csv'
         
@@ -125,7 +124,8 @@ def DataFrameDownload(file_id):
         print("Download %d%%." % int(status.progress() * 100))
 
     fh.seek(0)
-    return pd.read_csv(fh, index_col=0, encoding= 'ISO-8859-1')
+    ###For downloading files with special characters, utf-8 and ISO-8859-1 will work
+    return pd.read_csv(fh, index_col=None, encoding = 'utf-8')
 
 #upload file function
 def uploadFile(filename,filepath,mimetype):
@@ -136,9 +136,50 @@ def uploadFile(filename,filepath,mimetype):
                                         media_body=media,
                                         fields='id').execute()
     fileID = file.get('id')
-    print('File ID: %s' % fileID)
+    print('File ID: %s Upload Complete!' % fileID)
     return fileID
 
+#update file function
+def updateFile(filename,filepath,fileId, mimetype):
+    file_metadata = {'name': filename, 'mimeType': mimetype}
+    media = MediaFileUpload(filepath,
+                            mimetype=mimetype)
+    file = drive_service.files().update(fileId = fileId,\
+                                          body=file_metadata,\
+                                          media_body=media,\
+                                          fields='id').execute()
+    fileID = file.get('id')
+    print('File ID: %s Update Complete!' % fileID)
+
+
+#upload csv to google sheet function
+def df_to_GoogleSheetUpload(dataframe, filename):
+    file_metadata = {'name': filename, 'mimeType': 'application/vnd.google-apps.spreadsheet'}
+    #must encode to get it to be a bytes object for uploading
+    fh = io.BytesIO(dataframe.to_csv(index = False, encoding = 'utf-8').encode('utf-8'))
+    media = MediaIoBaseUpload(fh,\
+                            mimetype='text/csv',\
+                            resumable = False)
+    file = drive_service.files().create(body=file_metadata,\
+                                          media_body=media,\
+                                          fields='id').execute()
+    fileID = file.get('id')
+    print('File Upload Complete!\nID#: %s' % fileID)
+
+#update google sheet from csv file function
+def df_to_GoogleSheetUpdate(dataframe, filename, fileId):
+    file_metadata = {'name': filename, 'mimeType': 'application/vnd.google-apps.spreadsheet'}
+    #must encode to get it to be a bytes object for uploading
+    fh = io.BytesIO(dataframe.to_csv(index = False, encoding = 'utf-8').encode('utf-8'))
+    media = MediaIoBaseUpload(fh,\
+                            mimetype='text/csv',\
+                            resumable = False)
+    file = drive_service.files().update(fileId = fileId,\
+                                          body=file_metadata,\
+                                          media_body=media,\
+                                          fields='id').execute()
+    fileID = file.get('id')
+    print('File Update Complete!\nID#: %s' % fileID)
 
 #function for searching for a file in google drive, returns # of results equal to size
 def searchFile(size,query):
@@ -154,8 +195,21 @@ def searchFile(size,query):
         print('Files:')
         for item in items:
             print(item)
-            print('{0} ({1})'.format(item['name'], item['id']))
-            return items
+        return items
+
+#function for searching for a file in google drive, returns # of results equal to size
+def getFilename(fileID):
+    
+    #request for file name from fileIDrequested
+    results = drive_service.files().get(fileId=fileID).execute()
+    
+            
+    #resulting list from query
+    filename = results.get('name', [])
+    if not filename:
+        print('No file found.')
+    else:
+        return filename
 
 #delete file from google drive
 def delete_file(file_id):
